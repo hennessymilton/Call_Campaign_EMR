@@ -12,16 +12,12 @@ tomorrow = next_business_day(today1)
 startTime_1 = time.time()
 
 ### Get tables ###
-
 df00 = EMR_output()
 time_check(startTime_1, 'EMR_output')
 path = newPath('dump','Extract')
 df00.to_csv(path + tomorrow.strftime("%Y-%m-%d") + '.csv')
 
 df0 = pd.merge(df00, PTR(), on=['Project Type'])
-path = newPath('dump','Project Tracking')
-df00.to_csv(path + tomorrow.strftime("%Y-%m-%d") + '.csv')
-time_check(startTime_1, 'PRT')
 
 path_name = newPath('Table_Drop','')
 names = pd.read_csv(path_name + 'Coordinators.csv', sep=',')
@@ -29,7 +25,10 @@ names = pd.read_csv(path_name + 'Coordinators.csv', sep=',')
 time_check(startTime_1, 'Load Query')
 # --------------------------------------------------------------------------- 
 ### Transform ###
-df0 = df0[df0['Outreach Status'] != ]
+df0 = df0[df0['Outreach Status'] != 'PNP']
+df0 = df0[df0['Outreach Status'] != 'ReSchedule']
+df0 = df0[df0['Outreach Status'] != 'Scheduled']
+df0 = df0[df0['Outreach Status'] != 'Research']
 ## Remove names/notedate/note outside of specific list
 ## Agent name and note will refer to last note
 filter1 = df0['AgentName'].isin(names['Name'].unique())
@@ -70,19 +69,12 @@ time_check(startTime_1, 'Age Calc')
 audit_sort = {3:0, 2:1, 4:2, 6:3,  17:4, 1:5}
 df['audit_sort'] = df['Audit Type'].map(audit_sort)
 
-df['bin'] = df['bin'].astype(int)
-
-df2 = df.groupby(['Phone Number']).agg({'bin':'mean', 'ToGo Charts':'sum'}).rename(columns={'bin':'bin_agg', 'ToGo Charts':'togo_agg'}).reset_index()
+df2 = df.groupby(['Phone Number']).agg({'bin':'mean', 'ToGo Charts':'sum', 'Age':'mean'}).rename(columns={'bin':'bin_agg', 'ToGo Charts':'togo_agg','Age':'age_avg'}).reset_index()
 df = pd.merge(df,df2, on='Phone Number')
 
 df['coef'] = df['bin_agg'] / df['togo_agg']
-# df = df.sort_values(by=['coef', 'bin']).reset_index(drop=True)
-# df['coef'] = range(0,len(df))
 df['bin_coef'] = pd.qcut(df['coef'], 3, labels= range(1,4))
 df['bin_coef'] = df['bin_coef'].astype(int)
-# df_rank = df.sort_values(by = ['Phone Number', 'audit_sort', 'coef']).reset_index(drop= True)
-
-# df['bin_coef'] = df['bin_coef'].astype(int)
 df_rank = df.sort_values(by = ['Phone Number', 'audit_sort', 'bin']).reset_index(drop= True)
 # --------------------------------------------------------------------------- 
 time_check(startTime_1, 'Create Bins for rank')
@@ -92,7 +84,7 @@ time_check(startTime_1, 'Create Bins for rank')
 df_rank['Unique_Phone'] = 'Child'
 df_unique = df_rank.drop_duplicates(['Phone Number']).reset_index(drop = True)
 df_unique['Unique_Phone'] = 'Parent'
-df_unique = df_unique.sort_values(by = ['audit_sort','bin_coef', 'Age'], ascending=[True, True, False]).reset_index(drop= True)
+df_unique = df_unique.sort_values(by = ['audit_sort','bin_coef', 'age_avg'], ascending=[True, True, False]).reset_index(drop= True)
 
 df_unique['rank'] = range(0, len(df_unique))
 
@@ -106,11 +98,12 @@ df_clean['OutreachID'] = df_clean['OutreachID'].astype(str)
 df_clean['Matches'] = df_clean.groupby(['Phone Number'])['OutreachID'].transform(lambda x : '|'.join(x)).apply(lambda x: x[:3000])
 time_check(startTime_1, 'Matches column')
 
-cols_at_end = ['bin_agg','togo_agg','coef','bin_coef','Age', 'audit_sort','rank']
+### add columns to the end
+cols_at_end = ['bin_agg','togo_agg','coef','bin_coef','age_avg', 'audit_sort','rank']
 df_clean = df_clean[[c for c in df_clean if c not in cols_at_end] 
                     + [c for c in cols_at_end if c in df_clean]]
 
-
+### Upload files
 path = newPath('dump','Transform')
 df_clean.to_csv(path + tomorrow.strftime("%Y-%m-%d") + '.csv')
 path = newPath('dump','Load')

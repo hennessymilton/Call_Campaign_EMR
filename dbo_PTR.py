@@ -38,6 +38,7 @@ def PTR():
     df = df.sort_values(by= ['coef'], ascending=True).reset_index().round()#.astype(int)
     df['rank'] = range(0, len(df))
     df['bin'] = pd.qcut(df['rank'], 3,  labels= range(1,4)) #,labels=["good", "medium", "bad"])
+    df['bin'] = df['bin'].astype(int)
     df = df[['Project Type', 'bin']]
     return df
 
