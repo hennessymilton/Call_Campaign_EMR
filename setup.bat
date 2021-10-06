@@ -6,5 +6,3 @@ call activate base
 
 call conda env create --file emrr.yml
 call activate %venv%
-PAUSE
-@REM call C:/Users/%Usersname%/Anaconda3/envs/%venv%/python.exe
