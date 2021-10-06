@@ -54,7 +54,7 @@ def Next_N_BD(start, N):
 # print(Next_N_BD(today, 10))
 
 def time_check(start, comment):
-    executionTime_1 = (time.time() - start)
+    executionTime_1 = round(time.time() - start,2)
     print("-----------------------------------------------")
     print(comment + '\n' +'Time: ' + str(executionTime_1))
     print("-----------------------------------------------")
