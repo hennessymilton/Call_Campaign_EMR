@@ -1,6 +1,6 @@
 __pycache__
 test.ipynb
-Call_CAMPAIGN_EMR/dump/Extract/*
-Call_CAMPAIGN_EMR/dump/Transfor/*
-Call_CAMPAIGN_EMR/dump/Load/*
-Call_CAMPAIGN_EMR/dump/Project_Tracking/*
+Call_CAMPAIGN_EMR/dump/Extract/
+Call_CAMPAIGN_EMR/dump/Transfor/
+Call_CAMPAIGN_EMR/dump/Load/
+Call_CAMPAIGN_EMR/dump/Project_Tracking/
