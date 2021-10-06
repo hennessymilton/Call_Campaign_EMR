@@ -1,6 +1,7 @@
 __pycache__
 test.ipynb
 dump/Extract/*
-dump/Transfor/*
+dump/Transform/*
 dump/Load/*
 dump/Project_Tracking/*
+Table_Drop/*
