@@ -5,7 +5,7 @@ set folder=C:/Users/ARoethe/OneDrive - CIOX Health/Aaron/Projects/EMR Remote/Cal
 :: Open anaconda & activate env
 :: -------------------------------------------------------------------------
 call C:\Users\%Usersname%\Anaconda3\Scripts\activate C:\Users\%Usersname%\Anaconda3 
-call activate CallAutomation
+call activate %venv%
 :: -------------------------------------------------------------------------
 :: Change directory for relative path thats needed for the script
 :: -------------------------------------------------------------------------
@@ -13,6 +13,6 @@ cd %folder%
 :: -------------------------------------------------------------------------
 :: Run script at this location
 :: -------------------------------------------------------------------------
-call C:/Users/%Usersname%/Anaconda3/envs/%venv%/python.exe "%folder%/CC.py"
+call C:/Users/%Usersname%/Anaconda3/envs/%venv%/python.exe "%folder%/main.py"
 PAUSE
 
