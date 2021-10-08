@@ -1,18 +1,16 @@
-set Usersname=ARoethe
 set venv=emrr
-set folder=C:/Users/ARoethe/OneDrive - CIOX Health/Aaron/Projects/EMR Remote/Call_Campaign_EMR
 :: -------------------------------------------------------------------------
 :: Open anaconda & activate env
 :: -------------------------------------------------------------------------
-call C:\Users\%Usersname%\Anaconda3\Scripts\activate C:\Users\%Usersname%\Anaconda3 
+call %USERPROFILE%\Anaconda3\Scripts\activate %USERPROFILE%\Anaconda3 
 call activate %venv%
 :: -------------------------------------------------------------------------
 :: Change directory for relative path thats needed for the script
 :: -------------------------------------------------------------------------
-cd %folder%
+cd %~dp0
 :: -------------------------------------------------------------------------
 :: Run script at this location
 :: -------------------------------------------------------------------------
-call C:/Users/%Usersname%/Anaconda3/envs/%venv%/python.exe "%folder%/main.py"
+call %USERPROFILE%/Anaconda3/envs/%venv%/python.exe "%~dp0\main.py"
 PAUSE
 
