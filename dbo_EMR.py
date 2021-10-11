@@ -170,7 +170,7 @@ def EMR_output():
                               ELSE 0
                               END) > 0 
                   ''')
-      df = Query('DWWorking', query)
+      df = Query('DWWorking', query, 'Base Table')
       return df
 
 #df = EMR_output()/

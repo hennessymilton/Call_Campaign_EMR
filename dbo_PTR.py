@@ -29,7 +29,7 @@ def PTR():
                   and A.[Net Charts] > 0
             """
 
-    df = Query('DWWorking', sql)
+    df = Query('DWWorking', sql, 'Project Tracking')
     df['Today\'s Targeted charts'] =df['Today\'s Targeted charts'].replace(0,1)
       # df = df.groupby(['Project Type']).agg({'Today\'s Targeted charts':'sum', 'QA Completed':'sum'})
     df = df.groupby(['Project Type']).agg({'Today\'s Targeted charts':'sum', 'QA Completed':'sum', 'SB.EMR Remote':'sum'})
