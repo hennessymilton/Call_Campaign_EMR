@@ -26,7 +26,8 @@ def EMR_output():
                   , CONCAT(S.Address1, ' ', S.Address2)                   AS  [Address]
                   , S.City												AS	[City]
                   , S.State												AS  [State]
-                  , S.Zip													AS  [Zip]
+                  , S.Zip	
+                  , m.Market												AS  [Zip]
                   , icd.insertdate										AS 	[InsertDate]
                   , region.Region											AS 	[Region]
                   , SUM (CASE WHEN fc.ChartStatusID IN (1,2,3,4,5,11,13,22,23,29,30,31)
@@ -93,7 +94,14 @@ def EMR_output():
                   ---  total charts, togo charts --- not even apart of top quier, Togo??
             LEFT JOIN [DW_Operations].[dbo].[DimLoginName]		AS lne 
                   ON lne.LoginNameId = last_call.UserId
-
+            LEFT JOIN (
+                        SELECT DISTINCT
+                         [State]
+                        ,[Region] AS Market
+                        FROM [SiteScheduler].[dbo].[Market] AS m
+                        WHERE m.UpdateDate=(select MAX(UpdateDate) from SiteScheduler.dbo.Market b where b.UpdateDate = m.UpdateDate) 
+                  ) as m
+                  on m.State = S.State
             WHERE 
                   p.ProjectStatusID < 4
                   AND Prjdue.[Project Due Date] >= CAST(GETDATE() AS Date)
@@ -146,6 +154,7 @@ def EMR_output():
                   ,S.City
                   ,S.State
                   ,S.Zip
+                  ,m.Market
                   ,icd.insertdate	
                   ,Region.Region
                   ,last_call.[NoteDate]
@@ -164,8 +173,8 @@ def EMR_output():
       df = Query('DWWorking', query)
       return df
 
-# df = EMR_output()
-# print(df)
+#df = EMR_output()/
+#print(df['Market)
 
 # executionTime_1 = (time.time() - startTime_1)
 # print("-----------------------------------------------")
