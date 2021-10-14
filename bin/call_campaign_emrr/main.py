@@ -101,5 +101,6 @@ df_clean = df_clean[[c for c in df_clean if c not in cols_at_end]
                     + [c for c in cols_at_end if c in df_clean]]
 
 ### Upload files
-table_drops('push','Load',df_clean,file)
+table_drops('push','load',df_clean,file)
+table_drops('push','load',daily_piv(df_clean).reset_index(),'Coordinator_Pivot.csv')
 print(daily_piv(df_clean))
