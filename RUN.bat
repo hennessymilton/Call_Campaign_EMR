@@ -1,4 +1,5 @@
 set venv=emrr
+set projectname=call_campaign_emrr
 :: -------------------------------------------------------------------------
 :: Open anaconda & activate env
 :: -------------------------------------------------------------------------
@@ -11,6 +12,6 @@ cd %~dp0
 :: -------------------------------------------------------------------------
 :: Run script at this location
 :: -------------------------------------------------------------------------
-call %USERPROFILE%/Anaconda3/envs/%venv%/python.exe "%~dp0\main.py"
+call %USERPROFILE%/Anaconda3/envs/%venv%/python.exe "%~dp0\bin\%projectname%\main.py"
 PAUSE
 
