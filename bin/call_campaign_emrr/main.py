@@ -1,26 +1,21 @@
 import pandas as pd
 import numpy as np
-import pyodbc
 from datetime import date, timedelta, datetime
-from dbo_Query import Query
-from dbo_PTR import PTR
-from dbo_EMR import EMR_output
-from Bus_day_calc import next_business_day, Next_N_BD, daily_piv, map_piv, newPath, time_check, x_Bus_Day_ago
+from dbo_query import PTR, EMR_output
+from etc_function import next_business_day, time_check, table_drops, daily_piv
 import time
-today1 = datetime.today()
-tomorrow = next_business_day(today1)
+today = datetime.today()
+tomorrow = next_business_day(today)
 startTime_1 = time.time()
-
+file = str(tomorrow.strftime("%Y-%m-%d") + '.csv')
 ### Get tables ###
 df00 = EMR_output()
 time_check(startTime_1, 'EMR_output')
-path = newPath('dump','Extract')
-df00.to_csv(path + tomorrow.strftime("%Y-%m-%d") + '.csv')
+table_drops("push",'extract',df00,file)
 
 df0 = pd.merge(df00, PTR(), on=['Project Type'])
 
-path_name = newPath('Table_Drop','')
-names = pd.read_csv(path_name + 'Coordinators.csv', sep=',')
+names = table_drops('pull','table_drop','NA','Coordinator_m.csv')
 # --------------------------------------------------------------------------- 
 time_check(startTime_1, 'Load Query')
 # --------------------------------------------------------------------------- 
@@ -37,11 +32,10 @@ df0['AgentName']    = np.where(filter1, df0['AgentName'], 'NA')
 df0['NoteDate']     = np.where(filter2, 'NA', df0['NoteDate'])
 df0['Note']         = np.where(filter2, 'NA', df0['Note'])
 df0 = df0.drop(['CF Username'], axis=1)
-
 ### New name column will refer to assigment
-name = names[['State', 'Name', 'Agent ID','CF Username']]	
+name = names[['Name', 'Agent ID','CF Username','Market']]	
 
-df = pd.merge(df0, name, on=['State'])
+df = pd.merge(df0, name, on=['Market'])
 # --------------------------------------------------------------------------- 
 time_check(startTime_1, 'Add Names')
 # --------------------------------------------------------------------------- 
@@ -50,8 +44,8 @@ time_check(startTime_1, 'Add Names')
 df['InsertDate'] = pd.to_datetime(df['InsertDate'])
 df['Project Due Date'] = pd.to_datetime(df['Project Due Date'])
 df['Last Call Date'] = pd.to_datetime(df['Last Call Date'])
-df['DaysSinceCreation'] = round((today1 - df['InsertDate'])/np.timedelta64(1,'D'))
-df['DaysSinceLC'] = round((today1 - df['Last Call Date'])/np.timedelta64(1,'D'))
+df['DaysSinceCreation'] = round((today - df['InsertDate'])/np.timedelta64(1,'D'))
+df['DaysSinceLC'] = round((today - df['Last Call Date'])/np.timedelta64(1,'D'))
 df['InsertDate'] = df['InsertDate'].dt.strftime('%Y-%m-%d')
 df['Last Call Date'] = df['Last Call Date'].dt.strftime('%Y-%m-%d')
 df['Project Due Date'] = df['Project Due Date'].dt.strftime('%Y-%m-%d')
@@ -107,10 +101,5 @@ df_clean = df_clean[[c for c in df_clean if c not in cols_at_end]
                     + [c for c in cols_at_end if c in df_clean]]
 
 ### Upload files
-path = newPath('dump','Transform')
-df_clean.to_csv(path + tomorrow.strftime("%Y-%m-%d") + '.csv')
-path = newPath('dump','Load')
-df_clean.to_csv(path + tomorrow.strftime("%Y-%m-%d") + '.csv')
-print('mac is cool')
-print(df_clean)
-
+table_drops('push','Load',df_clean,file)
+print(daily_piv(df_clean))
