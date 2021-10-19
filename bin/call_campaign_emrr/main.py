@@ -7,7 +7,7 @@ import time
 today = datetime.today()
 tomorrow = next_business_day(today)
 startTime_1 = time.time()
-file = str(tomorrow.strftime("%Y-%m-%d") + '.csv')
+file = str(today.strftime("%Y-%m-%d") + '.csv')
 ### Get tables ###
 df00 = EMR_output()
 time_check(startTime_1, 'EMR_output')
