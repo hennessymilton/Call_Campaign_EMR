@@ -1,24 +1,25 @@
 import pandas as pd
 import pyodbc
-import sys
 import query_emrr
 import query_ptr
 
 def Query(database, sql, query_name):
-      DB = {'servername': 'EUS1PCFSNAPDB01',
-            'database': database}
+      servername = 'EUS1PCFSNAPDB01'
       # create the connection
       try:
-            conn = pyodbc.connect('DRIVER={SQL Server};SERVER=' + DB['servername'] + ';DATABASE=' + DB['database'] + ';Trusted_Connection=yes') 
+            conn = pyodbc.connect(f"""
+                  DRIVER={{SQL Server}};
+                  SERVER={servername};
+                  DATABASE={database};
+                  Trusted_Connection=yes""",
+                  autocommit=True) 
       except pyodbc.OperationalError:
-            print("""Didn\'t connect to they server""")
-            sys.exit(1)
-      print('''Connected to Server \t {}'''.format(query_name))
-      try:
+            print("""Couldn\'t connect to server""")
+            Query(database, sql, query_name)
+      else:
+            print(f'''Connected to Server \t {query_name}''')
             df = pd.read_sql(sql, conn)
             return df
-      except pyodbc.ProgrammingError:
-            print('Can\'t run query\'s on this table right now')
 
 def PTR():
       df = Query('DWWorking', query_ptr.sql, 'Project Tracking')
@@ -35,3 +36,8 @@ def PTR():
 def EMR_output(): 
       df = Query('DWWorking', query_emrr.sql, 'Base Table')
       return df
+if __name__ == '__main__':
+      df = EMR_output()
+      df1 = df[(df['OutreachID'] == 26132574) | (df['OutreachID'] == 26135744)]
+      print(df1)
+      
