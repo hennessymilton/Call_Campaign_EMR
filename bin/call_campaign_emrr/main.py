@@ -7,22 +7,10 @@ import time
 today = datetime.today()
 tomorrow = next_business_day(today)
 startTime_1 = time.time()
-
-def checkfile():
-    try:
-        df00 = EMR_output()
-    except IndexError:
-        print('Check file -> data/extract')
-        time.sleep(3)
-        checkfile()
-    ### if exception -> recurse otherwise return none
-    else:
-        return None
-
 file = str(today.strftime("%Y-%m-%d") + '.csv')
 ### Get tables ###
 df00 = EMR_output()
-time_check(startTime_1, 'EMR_out)
+time_check(startTime_1, 'EMR_output')
 table_drops("push",'extract',df00,file)
 
 df0 = pd.merge(df00, PTR(), on=['Project Type'])
@@ -111,8 +99,14 @@ cols_at_end = ['bin_agg','togo_agg','coef','bin_coef','age_avg', 'audit_sort','r
 df_clean = df_clean[[c for c in df_clean if c not in cols_at_end] 
                     + [c for c in cols_at_end if c in df_clean]]
 
+### test if zero agents were added to market, fill agent with the least amount 
+piv = daily_piv(df_clean).reset_index()
+backfill = df['Name'].iloc[-1]
+df_clean['Name'] = df_clean['Name'].isnull(backfill)
+piv = daily_piv(df_clean).reset_index()
+
 ### Upload files
 if __name__ == '__main__':
     table_drops('push','load',df_clean,file)
-    table_drops('push','load',daily_piv(df_clean).reset_index(),'Coordinator_Pivot.csv')
+    table_drops('push','load', piv,'Coordinator_Pivot.csv')
     print(daily_piv(df_clean))
