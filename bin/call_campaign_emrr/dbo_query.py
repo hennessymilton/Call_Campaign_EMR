@@ -22,7 +22,7 @@ def Query(database, sql, query_name):
             return df
 
 def PTR():
-      df = Query('DWWorking', query_ptr.sql, 'Project Tracking')
+      df = Query('DWWorking', query_ptr.ptr(), 'Project Tracking')
       df['Today\'s Targeted charts'] =df['Today\'s Targeted charts'].replace(0,1)
       df = df.groupby(['Project Type']).agg({'Today\'s Targeted charts':'sum', 'QA Completed':'sum', 'SB.EMR Remote':'sum'})
       df['coef'] = df['QA Completed'] / df['Today\'s Targeted charts'] * df['SB.EMR Remote']
@@ -34,10 +34,10 @@ def PTR():
       return df
 
 def EMR_output(): 
-      df = Query('DWWorking', query_emrr.sql, 'Base Table')
+      df = Query('DWWorking', query_emrr.emrr(), 'Base Table')
       return df
+
 if __name__ == '__main__':
       df = EMR_output()
       df1 = df[(df['OutreachID'] == 26132574) | (df['OutreachID'] == 26135744)]
       print(df1)
-      
