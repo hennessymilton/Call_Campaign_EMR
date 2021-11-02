@@ -6,7 +6,7 @@ import time
 
 ### Input/output static tables ###
 def table_drops(push_pull,dir,table,name):
-    table_path = Path("data/{}".format(dir))
+    table_path = Path(f"data/{dir}")
     if push_pull == 'push':
         table.to_csv(table_path / name, sep=',',index=False)
     else:

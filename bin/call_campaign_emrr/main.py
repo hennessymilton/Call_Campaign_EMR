@@ -101,8 +101,8 @@ df_clean = df_clean[[c for c in df_clean if c not in cols_at_end]
 
 ### test if zero agents were added to market, fill agent with the least amount 
 piv = daily_piv(df_clean).reset_index()
-backfill = df['Name'].iloc[-1]
-df_clean['Name'] = df_clean['Name'].isnull(backfill)
+backfill = str(piv['Name'].iloc[-1])
+df_clean['Name'] = df_clean['Name'].fillna(backfill)
 piv = daily_piv(df_clean).reset_index()
 
 ### Upload files
