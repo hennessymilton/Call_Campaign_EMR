@@ -7,13 +7,14 @@ import time
 today = datetime.today()
 tomorrow = next_business_day(today)
 startTime_1 = time.time()
-file = str(today.strftime("%Y-%m-%d") + '.csv')
+file = f'{today.strftime("%Y-%m-%d")}.csv'
+
 ### Get tables ###
 df00 = EMR_output()
 time_check(startTime_1, 'EMR_output')
 table_drops("push",'extract',df00,file)
 
-df0 = pd.merge(df00, PTR(), on=['Project Type'])
+df0 = pd.merge(df00, PTR(), on=['Project Type'], how='left')
 
 names = table_drops('pull','table_drop','NA','Coordinator_m.csv')
 # --------------------------------------------------------------------------- 
@@ -32,9 +33,8 @@ df0['NoteDate']     = np.where(filter2, 'NA', df0['NoteDate'])
 df0['Note']         = np.where(filter2, 'NA', df0['Note'])
 df0 = df0.drop(['CF Username'], axis=1)
 ### New name column will refer to assigment
-name = names[['Name', 'Agent ID','CF Username','Market']]	
-
-df = pd.merge(df0, name, on=['Market'])
+name = names[['Name', 'Agent ID','CF Username','Market']].drop_duplicates().reset_index(drop=True)
+df = pd.merge(df0, name, on=['Market'], how='left')
 # --------------------------------------------------------------------------- 
 time_check(startTime_1, 'Add Names')
 # --------------------------------------------------------------------------- 
@@ -66,12 +66,12 @@ audit_sort = {3:0, 2:1, 4:2, 6:3,  17:4, 1:5}
 df['audit_sort'] = df['Audit Type'].map(audit_sort)
 
 df2 = df.groupby(['Phone Number']).agg({'bin':'mean', 'ToGo Charts':'sum', 'Age':'mean'}).rename(columns={'bin':'bin_agg', 'ToGo Charts':'togo_agg','Age':'age_avg'}).reset_index()
-df = pd.merge(df,df2, on='Phone Number')
+skilled = pd.merge(df,df2, on='Phone Number', how='left')
 
-df['coef'] = df['bin_agg'] / df['togo_agg']
-df['bin_coef'] = pd.qcut(df['coef'], 3, labels= range(1,4))
-df['bin_coef'] = df['bin_coef'].astype(int)
-df_rank = df.sort_values(by = ['Phone Number', 'audit_sort', 'bin']).reset_index(drop= True)
+skilled['coef'] = skilled['bin_agg'] / skilled['togo_agg']
+skilled['bin_coef'] = pd.qcut(skilled['coef'], 3, labels= range(1,4))
+skilled['bin_coef'] = skilled['bin_coef'].astype(int)
+df_rank = skilled.sort_values(by = ['Phone Number', 'audit_sort', 'bin']).reset_index(drop= True)
 # --------------------------------------------------------------------------- 
 time_check(startTime_1, 'Create Bins for rank')
 # --------------------------------------------------------------------------- 

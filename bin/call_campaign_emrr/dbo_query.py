@@ -39,5 +39,5 @@ def EMR_output():
 
 if __name__ == '__main__':
       df = EMR_output()
-      df1 = df[(df['OutreachID'] == 26132574) | (df['OutreachID'] == 26135744)]
+      df1 = df[(df['OutreachID'] == 28477661)]['OutreachID']
       print(df1)
