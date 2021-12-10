@@ -8,7 +8,7 @@ import pandas as pd
 #   Specialty       = 6
 #   ACA             = 17
 
-def score_deduplicate(df):
+def cc_score_deduplicate(df):
     audit_sort = {3:0, 2:1, 4:2, 6:3,  17:4, 1:5}
     df['audit_sort'] = df['Audit Type'].map(audit_sort)
 
@@ -36,3 +36,14 @@ def score_deduplicate(df):
     df_clean['OutreachID'] = df_clean['OutreachID'].astype(str)
     df_clean['Matches'] = df_clean.groupby(['Phone Number'])['OutreachID'].transform(lambda x : '|'.join(x)).apply(lambda x: x[:3000])
     return df_clean
+
+def pt_score(df):
+      df['Today\'s Targeted charts'] =df['Today\'s Targeted charts'].replace(0,1)
+      df = df.groupby(['Project Type']).agg({'Today\'s Targeted charts':'sum', 'QA Completed':'sum', 'SB.EMR Remote':'sum'})
+      df['coef'] = df['QA Completed'] / df['Today\'s Targeted charts'] * df['SB.EMR Remote']
+      df = df.sort_values(by= ['coef'], ascending=True).reset_index().round()#.astype(int)
+      df['rank'] = range(0, len(df))
+      df['bin'] = pd.qcut(df['rank'], 3,  labels= range(1,4)) #,labels=["good", "medium", "bad"])
+      df['bin'] = df['bin'].astype(int)
+      df = df[['Project Type', 'bin']]
+      return df
