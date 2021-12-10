@@ -1,4 +1,21 @@
 import pandas as pd
+import numpy as np
+from datetime import datetime
+today = datetime.today()
+
+### Calculate age from DaysSinceCreation & DaysSinceLC
+def age(df):
+    cols = ['InsertDate', 'Project Due Date', 'Last Call Date']
+    df[cols] = df[cols].apply(pd.to_datetime, errors='coerce')
+
+    df['DaysSinceCreation'] = round((today - df['InsertDate'])/np.timedelta64(1,'D'))
+    df['DaysSinceLC'] = round((today - df['Last Call Date'])/np.timedelta64(1,'D'))
+
+    df['Last Call Date'] = df['Last Call Date'].dt.strftime('%Y-%m-%d')
+
+    filter1 = df['DaysSinceLC'] > df['DaysSinceCreation']
+    df['Age'] = np.where(filter1, df['DaysSinceCreation'], df['DaysSinceLC'])
+    return df
 
 ### Ranking ###
 #   Medicare Risk   = 1
