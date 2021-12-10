@@ -1,0 +1,38 @@
+import pandas as pd
+
+### Ranking ###
+#   Medicare Risk   = 1
+#   Medicaid Risk   = 2
+#   RADV            = 3
+#   HEDIS           = 4
+#   Specialty       = 6
+#   ACA             = 17
+
+def score_deduplicate(df):
+    audit_sort = {3:0, 2:1, 4:2, 6:3,  17:4, 1:5}
+    df['audit_sort'] = df['Audit Type'].map(audit_sort)
+
+    df2 = df.groupby(['Phone Number']).agg({'bin':'mean', 'ToGo Charts':'sum', 'Age':'mean'}).rename(columns={'bin':'bin_agg', 'ToGo Charts':'togo_agg','Age':'age_avg'}).reset_index()
+    skilled = pd.merge(df,df2, on='Phone Number', how='left')
+
+    skilled['coef'] = skilled['bin_agg'] / skilled['togo_agg']
+    skilled['bin_coef'] = pd.qcut(skilled['coef'], 3, labels= range(1,4))
+    skilled['bin_coef'] = skilled['bin_coef'].astype(int)
+    df_rank = skilled.sort_values(by = ['Phone Number', 'audit_sort', 'bin']).reset_index(drop= True)
+
+    # Parent / Child
+    df_rank['Unique_Phone'] = 'Child'
+    df_unique = df_rank.drop_duplicates(['Phone Number']).reset_index(drop = True)
+    df_unique['Unique_Phone'] = 'Parent'
+    df_unique = df_unique.sort_values(by = ['audit_sort','bin_coef', 'age_avg'], ascending=[True, True, False]).reset_index(drop= True)
+
+    df_unique['rank'] = range(0, len(df_unique))
+
+    # Add Unique ORGs to Rank list 
+    df_full = df_unique.append(df_rank)
+    df_clean = df_full.drop_duplicates(['OutreachID']).reset_index(drop= True)
+
+    ### Piped ORGs attached to phone numbers
+    df_clean['OutreachID'] = df_clean['OutreachID'].astype(str)
+    df_clean['Matches'] = df_clean.groupby(['Phone Number'])['OutreachID'].transform(lambda x : '|'.join(x)).apply(lambda x: x[:3000])
+    return df_clean
