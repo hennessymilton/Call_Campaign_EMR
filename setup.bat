@@ -1,4 +1,4 @@
-set venv=emrr
+set venv=emr
 call %USERPROFILE%\Anaconda3\Scripts\activate %USERPROFILE%\Anaconda3 
 call activate base
 
