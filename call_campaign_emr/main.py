@@ -1,112 +1,73 @@
 import pandas as pd
 import numpy as np
-from datetime import date, timedelta, datetime
-from dbo_query import PTR, EMR_output
-from etc_function import next_business_day, time_check, table_drops, daily_piv
+from datetime import datetime
 import time
+
+import pipeline.agent_assignment
+import pipeline.score
+from pipeline.etc import next_business_day, time_check, table_drops, daily_piv
+
+import server.call_campaign
+import server.project_tracking
+import server.secret
+from server.query import query
+
 today = datetime.today()
 tomorrow = next_business_day(today)
 startTime_1 = time.time()
 file = f'{today.strftime("%Y-%m-%d")}.csv'
 
-### Get tables ###
-df00 = EMR_output()
-time_check(startTime_1, 'EMR_output')
-table_drops("push",'extract',df00,file)
+servername  = server.secret.servername
+database    = server.secret.database
 
-df0 = pd.merge(df00, PTR(), on=['Project Type'], how='left')
+def main():
+    ### Get tables ###
+    cc_query = server.call_campaign.emrr()
+    cc = query(servername, database, cc_query, 'Base Table')
+    time_check(startTime_1, 'EMR_output')
+    # Save Table
+    table_drops("push",'extract', cc, file)
 
-names = table_drops('pull','table_drop','NA','Coordinator_m.csv')
-# --------------------------------------------------------------------------- 
-time_check(startTime_1, 'Load Query')
-# --------------------------------------------------------------------------- 
-### Transform ###
-for i in ['PNP','ReSchedule','Scheduled','Scheduled','Research']:
-    df0 = df0[df0['Outreach Status'] != i]
+    # Project Tracking Report
+    pt_query = server.project_tracking.ptr()
+    pt = query(servername, database, pt_query, 'Project Tracking')
+    pt_scored = pipeline.score.pt_score(pt)
 
-## Remove names/notedate/note outside of specific list
-## Agent name and note will refer to last note
-filter1 = df0['AgentName'].isin(names['Name'].unique())
-filter2 = df0['AgentName'] == 'NA'
-df0['AgentName']    = np.where(filter1, df0['AgentName'], 'NA')
-df0['NoteDate']     = np.where(filter2, 'NA', df0['NoteDate'])
-df0['Note']         = np.where(filter2, 'NA', df0['Note'])
-df0 = df0.drop(['CF Username'], axis=1)
-### New name column will refer to assigment
-name = names[['Name', 'Agent ID','CF Username','Market']].drop_duplicates().reset_index(drop=True)
-df = pd.merge(df0, name, on=['Market'], how='left')
-# --------------------------------------------------------------------------- 
-time_check(startTime_1, 'Add Names')
-# --------------------------------------------------------------------------- 
+    # Add score to campaign
+    df0 = pd.merge(cc, pt_scored, on=['Project Type'], how='left')
+    time_check(startTime_1, 'Finished Query')
 
-### Calculate age from DaysSinceCreation & DaysSinceLC
-df['InsertDate'] = pd.to_datetime(df['InsertDate'])
-df['Project Due Date'] = pd.to_datetime(df['Project Due Date'])
-df['Last Call Date'] = pd.to_datetime(df['Last Call Date'])
-df['DaysSinceCreation'] = round((today - df['InsertDate'])/np.timedelta64(1,'D'))
-df['DaysSinceLC'] = round((today - df['Last Call Date'])/np.timedelta64(1,'D'))
-df['InsertDate'] = df['InsertDate'].dt.strftime('%Y-%m-%d')
-df['Last Call Date'] = df['Last Call Date'].dt.strftime('%Y-%m-%d')
-df['Project Due Date'] = df['Project Due Date'].dt.strftime('%Y-%m-%d')
-# Age #
-filter1 = df['DaysSinceLC'] > df['DaysSinceCreation']
-df['Age'] = np.where(filter1, df['DaysSinceCreation'], df['DaysSinceLC'])
-# --------------------------------------------------------------------------- 
-time_check(startTime_1, 'Age Calc')
-# --------------------------------------------------------------------------- 
+    ### Transform ###
+    # Remove special status
+    for i in ['PNP','ReSchedule','Scheduled','Scheduled','Research']:
+        df0 = df0[df0['Outreach Status'] != i]
 
-### Ranking ###
-#   Medicare Risk   = 1
-#   Medicaid Risk   = 2
-#   RADV            = 3
-#   HEDIS           = 4
-#   Specialty       = 6
-#   ACA             = 17
-audit_sort = {3:0, 2:1, 4:2, 6:3,  17:4, 1:5}
-df['audit_sort'] = df['Audit Type'].map(audit_sort)
+    # Remove names/date/note outside of specific list
+    # Agent name and note will refer to last note
+    names = table_drops('pull','table_drop','NA','Coordinator_m.csv')
+    df = pipeline.agent_assignment.agent_assignment(df0, names)
 
-df2 = df.groupby(['Phone Number']).agg({'bin':'mean', 'ToGo Charts':'sum', 'Age':'mean'}).rename(columns={'bin':'bin_agg', 'ToGo Charts':'togo_agg','Age':'age_avg'}).reset_index()
-skilled = pd.merge(df,df2, on='Phone Number', how='left')
+    ### Calculate age from DaysSinceCreation & DaysSinceLC
+    df_clean = pipeline.score.age(df)
 
-skilled['coef'] = skilled['bin_agg'] / skilled['togo_agg']
-skilled['bin_coef'] = pd.qcut(skilled['coef'], 3, labels= range(1,4))
-skilled['bin_coef'] = skilled['bin_coef'].astype(int)
-df_rank = skilled.sort_values(by = ['Phone Number', 'audit_sort', 'bin']).reset_index(drop= True)
-# --------------------------------------------------------------------------- 
-time_check(startTime_1, 'Create Bins for rank')
-# --------------------------------------------------------------------------- 
+    scored = pipeline.score.cc_score_deduplicate(df_clean)
 
-# Parent / Child
-df_rank['Unique_Phone'] = 'Child'
-df_unique = df_rank.drop_duplicates(['Phone Number']).reset_index(drop = True)
-df_unique['Unique_Phone'] = 'Parent'
-df_unique = df_unique.sort_values(by = ['audit_sort','bin_coef', 'age_avg'], ascending=[True, True, False]).reset_index(drop= True)
+    ### add columns to the end
+    cols_at_end = ['bin_agg','togo_agg','coef','bin_coef','age_avg', 'audit_sort','rank']
+    scored = scored[[c for c in scored if c not in cols_at_end] + [c for c in cols_at_end if c in scored]]
 
-df_unique['rank'] = range(0, len(df_unique))
+    ### test if zero agents were added to market, fill agent with the least amount 
+    piv = daily_piv(scored).reset_index()
+    backfill = str(piv['Name'].iloc[-1])
+    scored['Name'] = scored['Name'].fillna(backfill)
+    piv = daily_piv(scored).reset_index()
 
-# Add Unique ORGs to Rank list 
-df_full = df_unique.append(df_rank)
-df_clean = df_full.drop_duplicates(['OutreachID']).reset_index(drop= True)
-time_check(startTime_1, 'Parent/Child')
-
-### Piped ORGs attached to phone numbers
-df_clean['OutreachID'] = df_clean['OutreachID'].astype(str)
-df_clean['Matches'] = df_clean.groupby(['Phone Number'])['OutreachID'].transform(lambda x : '|'.join(x)).apply(lambda x: x[:3000])
-time_check(startTime_1, 'Matches column')
-
-### add columns to the end
-cols_at_end = ['bin_agg','togo_agg','coef','bin_coef','age_avg', 'audit_sort','rank']
-df_clean = df_clean[[c for c in df_clean if c not in cols_at_end] 
-                    + [c for c in cols_at_end if c in df_clean]]
-
-### test if zero agents were added to market, fill agent with the least amount 
-piv = daily_piv(df_clean).reset_index()
-backfill = str(piv['Name'].iloc[-1])
-df_clean['Name'] = df_clean['Name'].fillna(backfill)
-piv = daily_piv(df_clean).reset_index()
+    # Save final product
+    table_drops('push','load',scored,file)
+    table_drops('push','load', piv,'Coordinator_Pivot.csv')
+    print(daily_piv(scored))
 
 ### Upload files
 if __name__ == '__main__':
-    table_drops('push','load',df_clean,file)
-    table_drops('push','load', piv,'Coordinator_Pivot.csv')
-    print(daily_piv(df_clean))
+    main()
+    
