@@ -10,7 +10,8 @@ from pipeline.etc import next_business_day, time_check, table_drops, daily_piv
 import server.call_campaign
 import server.project_tracking
 import server.secret
-from server.query import query
+import server.query
+# from server.query import query
 
 today = datetime.today()
 tomorrow = next_business_day(today)
@@ -23,14 +24,14 @@ database    = server.secret.database
 def main():
     ### Get tables ###
     cc_query = server.call_campaign.emrr()
-    cc = query(servername, database, cc_query, 'Base Table')
+    cc = server.query.query(servername, database, cc_query, 'Base Table')
     time_check(startTime_1, 'EMR_output')
     # Save Table
     table_drops("push",'extract', cc, file)
 
     # Project Tracking Report
     pt_query = server.project_tracking.ptr()
-    pt = query(servername, database, pt_query, 'Project Tracking')
+    pt = server.query.query(servername, database, pt_query, 'Project Tracking')
     pt_scored = pipeline.score.pt_score(pt)
 
     # Add score to campaign
