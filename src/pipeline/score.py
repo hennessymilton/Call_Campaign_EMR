@@ -33,6 +33,7 @@ def cc_score_deduplicate(df):
     skilled = pd.merge(df,df2, on='Phone Number', how='left')
 
     skilled['coef'] = skilled['bin_agg'] / skilled['togo_agg']
+    skilled['coef'] = skilled['coef'].fillna(max(skilled['coef']))
     skilled['bin_coef'] = pd.qcut(skilled['coef'], 3, labels= range(1,4))
     skilled['bin_coef'] = skilled['bin_coef'].astype(int)
     df_rank = skilled.sort_values(by = ['Phone Number', 'audit_sort', 'bin']).reset_index(drop= True)
