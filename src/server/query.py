@@ -12,7 +12,7 @@ def query(servername, database, sql, query_name):
                   autocommit=True) 
       except pyodbc.OperationalError:
             print("""Couldn\'t connect to server""")
-            query(database, sql, query_name)
+            query(servername, database, sql, query_name)
       else:
             print(f'''Connected to Server \t {query_name}''')
             df = pd.read_sql(sql, conn)
