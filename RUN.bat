@@ -12,6 +12,6 @@ cd %~dp0
 :: -------------------------------------------------------------------------
 :: Run script at this location
 :: -------------------------------------------------------------------------
-call %USERPROFILE%/Anaconda3/envs/%venv%/python.exe "%~dp0\%projectname%\main.py"
+call %USERPROFILE%/Anaconda3/envs/%venv%/python.exe "%~dp0\src\main.py"
 PAUSE
 
