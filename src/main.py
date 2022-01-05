@@ -56,8 +56,13 @@ def main():
     ### add columns to the end
     cols_at_end = ['bin_agg','togo_agg','coef','bin_coef','age_avg', 'audit_sort','rank']
     scored = scored[[c for c in scored if c not in cols_at_end] + [c for c in cols_at_end if c in scored]]
+    
+    ### fix date format
+    date = ['Project Due Date', 'InsertDate']
+    for i in date:
+        scored[f'{i}'] = scored[f'{i}'].dt.strftime('%Y-%m-%d')
 
-    ### test if zero agents were added to market, fill agent with the least amount 
+    ## test if zero agents were added to market, fill agent with the least amount 
     piv = daily_piv(scored).reset_index()
     backfill = str(piv['Name'].iloc[-1])
     scored['Name'] = scored['Name'].fillna(backfill)
