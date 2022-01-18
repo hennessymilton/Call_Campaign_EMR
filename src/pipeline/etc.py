@@ -36,13 +36,13 @@ ONE_DAY = timedelta(days=1)
 
 def next_business_day(start):
     next_day = start + ONE_DAY
-    while next_day.weekday() in holidays.WEEKEND or next_day in HOLIDAYS_CIOX:
+    while next_day.weekday() in holidays.WEEKEND or next_day in HOLIDAYS_CIOX.values():
         next_day += ONE_DAY
     return next_day
 
 def last_business_day(start):
     next_day = start - ONE_DAY
-    while next_day.weekday() in holidays.WEEKEND or next_day in HOLIDAYS_CIOX:
+    while next_day.weekday() in holidays.WEEKEND or next_day in HOLIDAYS_CIOX.values():
         next_day -= ONE_DAY
     return next_day
 
