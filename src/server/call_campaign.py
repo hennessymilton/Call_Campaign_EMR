@@ -7,6 +7,7 @@ def emrr():
                 , (lne.FirstName+' '+lne.LastName)						AS 	[AgentName]
                 , rm.InternalCategoryName							    AS	[Retrieval Method]
                 , MR_Table.[Sub Retrieval Method]
+                , om.RetrievalTeam
                 , pt.ProjectTypeDescription								AS 	[Project Type]
                 , atd.AuditTypeId                                       AS 	[Audit Type]
                 , lcd.Date										        As  [Last Call Date]    --- switch
@@ -137,6 +138,7 @@ def emrr():
                 , (lne.FirstName+' '+lne.LastName)						
                 ,rm.InternalCategoryName
                 , MR_Table.[Sub Retrieval Method]
+                , om.RetrievalTeam
                 , pt.ProjectTypeDescription
                 , om.CallCount																	
                 ,atd.AuditTypeId
