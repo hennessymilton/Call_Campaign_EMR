@@ -40,7 +40,7 @@ def main():
 
     ### Transform ###
     # Remove special status
-    for i in ['PNP','ReSchedule','Scheduled','Scheduled','Research']:
+    for i in ['PNP','ReSchedule','Scheduled','Scheduled','Research', 'Past Due']:
         df0 = df0[df0['Outreach Status'] != i]
 
     # Remove names/date/note outside of specific list
