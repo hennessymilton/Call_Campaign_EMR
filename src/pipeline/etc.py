@@ -19,10 +19,12 @@ def time_check(start, comment):
     print("-----------------------------------------------")
 
 def daily_piv(df):
-    df = df[df['Unique_Phone'] == 'Parent'] #, 'State'
-    u = df.pivot_table(index =['Name'], values =['OutreachID','togo_agg'], aggfunc = {'OutreachID':'count','togo_agg':'sum'}, margins=True,margins_name= 'TOTAL')
-    u['Chart/ID'] = u['togo_agg'] / u['OutreachID']
-    return u.sort_values(by='OutreachID', ascending=False)
+    try:
+        u = df.pivot_table(index =['Skill'], values =['OutreachID','ToGoCharts'], aggfunc = {'OutreachID':'count','ToGoCharts':'sum'}, margins=True,margins_name= 'TOTAL')
+        u['Chart/ID'] = u['ToGoCharts'] / u['OutreachID']
+    except:
+        u = print('pivot broke')
+    return u
 
 ### CIOX Business Calender
 today = date.today()
