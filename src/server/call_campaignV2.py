@@ -31,10 +31,9 @@ WITH base as (
         ,OC.RetrievedCharts
         ,ISNULL(OC.CallCount, 0) AS 'CallCount'
         ,ISNULL(CONVERT(VARCHAR(10), OM.ScheduleDate, 1), '') AS 'ScheduleDate'
-        -- ,ISNULL(RT.Name, 'Ciox') AS 'Retrieval Team'
         ,ISNULL(CONVERT(VARCHAR(10), OD.LastCallDate, 1), '') AS 'Last Call'
-        ,(DATEDIFF(dd, OM.InsertDate, GETDATE())) AS 'DaysSinceCreation' 
-        ,DATEADD(WEEKDAY, 9, CONVERT(VARCHAR(10), GETDATE(), 1)) AS 'Recommended Schedule Date'
+        ,ISNULL(CONVERT(VARCHAR(10), OM.InsertDate, 1), '') AS InsertDate
+        ,CONVERT(VARCHAR(10), DATEADD(WEEKDAY, 9, CONVERT(VARCHAR(10), GETDATE(), 1)),1 ) AS 'Recommended Schedule Date'
         ,CAST(p.Duedate AS DATE) AS 'DueDate'
   
     FROM ChartFinder.dbo.OutreachMaster OM 
