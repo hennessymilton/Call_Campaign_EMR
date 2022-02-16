@@ -75,7 +75,7 @@ WITH base as (
     AND OC.ToGoCharts != '0'
     AND PT.CustomField6 <> 'Y'
     AND P.DueDate > getdate()
-    AND RM.NAME IN ('EMR - Remote') -- 'Retrieval Method'
+    AND RM.NAME IN ('EMR - Remote', 'EMR - Remote Queued') -- 'Retrieval Method'
     AND SC.PrimaryFlag = 1
     AND SC.ActiveFlag = 1
     AND msic.[Primary] = 1
