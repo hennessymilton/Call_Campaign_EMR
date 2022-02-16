@@ -7,10 +7,11 @@ def emrr():
                 , (lne.FirstName+' '+lne.LastName)						AS 	[AgentName]
                 , rm.InternalCategoryName							    AS	[Retrieval Method]
                 , MR_Table.[Sub Retrieval Method]
+                , ec.[Remote Sites Name]
                 , om.RetrievalTeam
                 , pt.ProjectTypeDescription								AS 	[Project Type]
                 , atd.AuditTypeId                                       AS 	[Audit Type]
-                , lcd.Date										        As  [Last Call Date]    --- switch
+                , lcd.Date										        As  [Last Call]    --- switch
                 , om.CallCount											As  [Call Count]
                 , s.Phone1                                              AS  [Phone Number]
                 , csid.SiteCleanId                                      AS  [Site Clean ID]
@@ -29,7 +30,7 @@ def emrr():
                         THEN 1
                         ELSE 0
                         END)										AS	[ToGo Charts]
-                , lne.FirstName + ' '+lne.LastName as 'Coordinator Name'
+                , lne.FirstName + ' '+lne.LastName                                                      AS 'Coordinator Name'
                 , lne.LoginName as 'CF Username'
                 , MR_Table.[Project Due Date]
                 , last_call.[NoteDate]
@@ -38,6 +39,8 @@ def emrr():
         FROM DW_Operations.dbo.FactChart					AS	fc
         JOIN DW_Operations.dbo.DimOutreach					AS	om
                 ON fc.OutreachId = om.OutreachId
+        LEFT JOIN [DWWorking].[Prod].[EMR_Credentials]                                AS ec
+                ON om.OutreachId = ec.[Outreach ID]
         JOIN DW_Operations.dbo.DimDate						AS lcd
                 ON om.LastCallDateId = lcd.DateKey
         JOIN DW_Operations.dbo.DimRetrievalMethod			AS	rm
@@ -85,16 +88,16 @@ def emrr():
                 ON last_call.Outreachid = OM.OutreachId 
         LEFT JOIN [DW_Operations].[dbo].[DimLoginName]		AS lne 
                 ON lne.LoginNameId = last_call.UserId
-                LEFT JOIN (
-                        SELECT DISTINCT
-                                Zip
-                                ,[State]
-                                ,[Region] AS Market
-                        FROM [SiteScheduler].[dbo].[Market] AS m
-                        WHERE m.UpdateDate=(select MAX(UpdateDate) from SiteScheduler.dbo.Market b where b.UpdateDate = m.UpdateDate)
-                        ) as m
-                        on m.State = S.State
-                        AND m.Zip = S.Zip
+        LEFT JOIN (
+                SELECT DISTINCT
+                        Zip
+                        ,[State]
+                        ,[Region] AS Market
+                FROM [SiteScheduler].[dbo].[Market] AS m
+                WHERE m.UpdateDate=(select MAX(UpdateDate) from SiteScheduler.dbo.Market b where b.UpdateDate = m.UpdateDate)
+                ) as m
+                on m.State = S.State
+                AND m.Zip = S.Zip
         WHERE 
                 p.ProjectStatusID < 4
                 AND MR_Table.[Project Due Date] >= CAST(GETDATE() AS Date)
@@ -131,13 +134,14 @@ def emrr():
                 AND atd.AuditTypeDescription <> '[]Specialty'--	
         GROUP BY
                 om.OutreachID
-                ,csid.SiteCleanId 
-                ,om.PrimarySiteId
+                , csid.SiteCleanId 
+                , om.PrimarySiteId
                 , os.OutreachStatusDescription							
                 , om.OutreachTeam
                 , (lne.FirstName+' '+lne.LastName)						
-                ,rm.InternalCategoryName
+                , rm.InternalCategoryName
                 , MR_Table.[Sub Retrieval Method]
+                , ec.[Remote Sites Name]
                 , om.RetrievalTeam
                 , pt.ProjectTypeDescription
                 , om.CallCount																	
