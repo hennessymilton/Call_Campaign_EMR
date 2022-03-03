@@ -6,6 +6,7 @@ import time
 import pipeline.agent_assignment
 import pipeline.score
 from pipeline.etc import next_business_day, time_check, table_drops, daily_piv
+from pipeline.outreach_status import outreach_status
 
 import server.call_campaign
 import server.call_campaignV2
@@ -36,6 +37,10 @@ def main():
     cc.columns = cc.columns.str.replace('/ ','')
     cc = cc.rename(columns=lambda x: x.replace(' ', "_"))
     cc.drop(columns='top_org', inplace=True)
+    cc['OutreachID'] = cc['OutreachID'].astype(str)
+
+    status_log_raw = pd.read_csv(f'data/table_drop/status_log.csv')
+    cc_status = outreach_status(cc, status_log_raw)
     # Project Tracking Report
     # pt_query = server.project_tracking.ptr()
     # pt = server.query.query(servername, database, pt_query, 'Project Tracking')
@@ -48,7 +53,7 @@ def main():
     ### Transform ###
     # Remove special status
     status = ['PNP','ReSchedule','Scheduled', 'Research', 'Past Due', 'ROI Research'] # 'ROI Research'???
-    rm_status = cc[~cc['Outreach_Status'].isin(status)].copy()
+    rm_status = cc_status[~cc_status['Outreach_Status'].isin(status)].copy()
 
     def add_col(df):
         ### Calculate age from DaysSinceCreation & DaysSinceLC
