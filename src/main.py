@@ -67,18 +67,20 @@ def main():
         f1 = df['Last_Call'].isna()
         df.age = np.where(f1, df.DaysSinceCreation, df.age)
 
-        audit_sort  = {'RADV':1, 'Medicaid Risk':1, 'HEDIS':2, 'Specialty':3,  'ACA':0, 'Medicare Risk':5}
+        audit_sort  = {'RADV':1, 'HEDIS':2, 'Medicaid Risk':3, 'Specialty':4,  'ACA':5, 'Medicare Risk':6}
         df['audit_sort'] = df['Audit_Type'].map(audit_sort)
         # use map 
         f1 = df.audit_sort <=2
-        df['sla'] = np.where(f1, 4, 8)
+        df['sla'] = np.where(f1, 3, 4)
+        f1 = df.audit_sort > 3
+        df['sla'] = np.where(f1, 8, df.sla)
         f1 = df.sla >= df.age
         df['meet_sla'] = np.where(f1, 1,0)
         # togo charts
-        bucket_amount = 20
+        bucket_amount = 10
         labels = list(([x for x in range(bucket_amount)]))
-        df['togo_bin'] = pd.cut(df.ToGoCharts, bins=bucket_amount, labels=labels)
-        df.togo_bin = df.togo_bin.astype(int)
+        df['age_bin'] = pd.cut(df.age, bins=bucket_amount, labels=labels)
+        df.age_bin = df.age_binS.astype(int)
         # no call flag
         f1 = df.Last_Call.isna()
         df['no_call'] = np.where(f1, 1,0)
