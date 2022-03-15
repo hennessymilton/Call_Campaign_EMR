@@ -28,7 +28,7 @@ def rank(df, new_col, groups=list, rank_cols=dict):
     return df
 
 def stack_inventory(df, grouping):
-    rank_cols = {'pend':True,'meet_sla':True,'no_call':False, 'togo_bin':False, 'age':False}
+    rank_cols = {'pend':True,'meet_sla':True,'no_call':False, 'age_bin':False, 'ToGoCharts':False}
 
     # group by phone number or msid & rank highest value org
     df = rank(df,'overall_rank',['Skill', grouping], rank_cols)
