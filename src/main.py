@@ -54,15 +54,29 @@ def main():
     # Remove special status
     status = ['PNP','ReSchedule','Scheduled', 'Research', 'Past Due', 'ROI Research'] # 'ROI Research'???
     rm_status = cc_status[~cc_status['Outreach_Status'].isin(status)].copy()
+    
+    def Last_Call(df, tomorrow_str):
+        # create table of unique dates
+        lc_df = df[df.Last_Call.notna()].copy()
+        Last_Call = lc_df['Last_Call'].unique().tolist()
+        business_dates = pd.DataFrame(Last_Call, columns=['Last_Call'])
+        # calculate true business days from tomorow 
+        business_dates['age'] = business_dates.Last_Call.apply(lambda x: len(pd.bdate_range(x, tomorrow_str)))
+        business_dates['age'] -= 1
+        lc = df.merge(business_dates, on='Last_Call', how='left')
 
-    def add_col(df):
+        f1 = lc.Last_Call.isna()
+        lc.age = np.where(f1, lc.DaysSinceCreation, lc.age)
+        return lc
+
+    def add_col(df, tomorrow):
         ### Calculate age from DaysSinceCreation & DaysSinceLC
         cols = ['InsertDate', 'Last_Call']
         df[cols] = df[cols].apply(pd.to_datetime, errors='coerce')
 
         df['DaysSinceCreation'] = (tomorrow - df['InsertDate']).dt.days
 
-        df['age'] = (tomorrow - df['Last_Call']).dt.days
+        df = Last_Call(df, tomorrow)
 
         f1 = df['Last_Call'].isna()
         df.age = np.where(f1, df.DaysSinceCreation, df.age)
@@ -80,16 +94,19 @@ def main():
         bucket_amount = 10
         labels = list(([x for x in range(bucket_amount)]))
         df['age_bin'] = pd.cut(df.age, bins=bucket_amount, labels=labels)
-        df.age_bin = df.age_binS.astype(int)
+        df.age_bin = df.age_bin.astype(int)
         # no call flag
         f1 = df.Last_Call.isna()
         df['no_call'] = np.where(f1, 1,0)
 
         f1 = df['Outreach_Status'] == 'PNP Released'
-        df['pend'] = np.where(f1, 0, 1)
+        df['pend'] = np.where(f1, 1, 0)
+        # temp projects
+        f1 = df['Project_Type'].isin(['Advantasure'])
+        df['temp_rank'] = np.where(f1, 1, 0)
         return df
 
-    add_sla = add_col(rm_status)
+    add_sla = add_col(rm_status, tomorrow)
 
     def Skills(df):
         df['Skill'] = 'none'
