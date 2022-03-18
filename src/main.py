@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, date
 import time
 
 import pipeline.agent_assignment
@@ -15,8 +15,8 @@ import server.secret
 import server.query
 # from server.query import query
 
-today = datetime.today()
-tomorrow = next_business_day(today)
+today = date.today()
+tomorrow = next_business_day(today).strftime("%Y-%m-%d")
 startTime_1 = time.time()
 file = f'{today.strftime("%Y-%m-%d")}.csv'
 
@@ -55,13 +55,12 @@ def main():
     status = ['PNP','ReSchedule','Scheduled', 'Research', 'Past Due', 'ROI Research'] # 'ROI Research'???
     rm_status = cc_status[~cc_status['Outreach_Status'].isin(status)].copy()
     
-    def Last_Call(df, tomorrow_str):
+    def Last_Call(df, today):
         # create table of unique dates
-        lc_df = df[df.Last_Call.notna()].copy()
-        Last_Call = lc_df['Last_Call'].unique().tolist()
-        business_dates = pd.DataFrame(Last_Call, columns=['Last_Call'])
+        lc_df = df[df.Last_Call.notna()].Last_Call.unique().tolist()
+        business_dates = pd.DataFrame(lc_df, columns=['Last_Call'])
         # calculate true business days from tomorow 
-        business_dates['age'] = business_dates.Last_Call.apply(lambda x: len(pd.bdate_range(x, tomorrow_str)))
+        business_dates['age'] = business_dates.Last_Call.apply(lambda x: len(pd.bdate_range(x, today)))
         business_dates['age'] -= 1
         lc = df.merge(business_dates, on='Last_Call', how='left')
 
@@ -69,14 +68,15 @@ def main():
         lc.age = np.where(f1, lc.DaysSinceCreation, lc.age)
         return lc
 
-    def add_col(df, tomorrow):
+    def add_col(df, today):
         ### Calculate age from DaysSinceCreation & DaysSinceLC
         cols = ['InsertDate', 'Last_Call']
-        df[cols] = df[cols].apply(pd.to_datetime, errors='coerce')
+        for c in cols:
+            df[c] = pd.to_datetime(df[c]).dt.date
 
-        df['DaysSinceCreation'] = (tomorrow - df['InsertDate']).dt.days
+        df['DaysSinceCreation'] = (today - df['InsertDate']).dt.days
 
-        df = Last_Call(df, tomorrow)
+        df = Last_Call(df, today)
 
         f1 = df['Last_Call'].isna()
         df.age = np.where(f1, df.DaysSinceCreation, df.age)
@@ -106,7 +106,7 @@ def main():
         df['temp_rank'] = np.where(f1, 1, 0)
         return df
 
-    add_sla = add_col(rm_status, tomorrow)
+    add_sla = add_col(rm_status, today)
 
     def Skills(df):
         df['Skill'] = 'none'
