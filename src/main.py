@@ -103,7 +103,7 @@ def main():
         df['pend'] = np.where(f1, 1, 0)
         # temp projects
         f1 = df['Project_Type'].isin(['Advantasure'])
-        df['temp_rank'] = np.where(f1, 1, 0)
+        df['temp_project'] = np.where(f1, 1, 0)
         return df
 
     add_sla = add_col(rm_status, today)
