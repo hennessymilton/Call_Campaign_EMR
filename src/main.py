@@ -9,7 +9,7 @@ from pipeline.etc import next_business_day, time_check, table_drops, daily_piv
 from pipeline.outreach_status import outreach_status
 
 import server.call_campaign
-import server.call_campaignV2
+import server.call_campaignV3
 import server.project_tracking
 import server.secret
 import server.query
@@ -29,16 +29,17 @@ def main():
         cc = pd.read_csv(f'data/extract/{file}')
     except:
         # Save Table
-        cc_query = server.call_campaignV2.emrr()
+        cc_query = server.call_campaignV3.emrr()
         cc = server.query.query(servername, database, cc_query, 'Base Table')
         time_check(startTime_1, 'EMR_output')
         table_drops("push",'extract', cc, file)
 
     cc.columns = cc.columns.str.replace('/ ','')
     cc = cc.rename(columns=lambda x: x.replace(' ', "_"))
-    cc.drop(columns='top_org', inplace=True)
+    date_col = ['Last_Call', 'InsertDate']
+    for col in date_col:
+        cc[col] = pd.to_datetime(cc[col],errors='coerce', format='%Y%m%d')
     cc['OutreachID'] = cc['OutreachID'].astype(str)
-
     status_log_raw = pd.read_csv(f'data/table_drop/status_log.csv')
     cc_status = outreach_status(cc, status_log_raw)
     # Project Tracking Report
