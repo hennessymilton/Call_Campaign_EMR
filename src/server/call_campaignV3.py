@@ -12,17 +12,28 @@ WITH emr as (
     AND     ps.ProjectStatusId IN (1, 3)
     AND     fc.OutreachId <> -1
 )
-,CleanSiteId AS (
+, msi AS (
+    SELECT 
+         msi.Id      [MasterSiteId]
+        ,msi.Name   [MasterSiteName]
+        ,msic.Phone
+        ,msic.Fax
+    FROM [MasterSiteId].[dbo].[MSI]                         msi
+    LEFT JOIN [MasterSiteId].[dbo].[MSIContact]               msic 
+        ON msic.MSId = msi.Id
+    WHERE msic.[Primary] = 1 
+)
+,RetrievalMethod as (
     SELECT 
         OutreachId
-        ,STRING_AGG(SiteCleanId, ' | ') 'SiteCleanId'
+        ,STRING_AGG(RetrievalMethodDescription, ' | ') 'Sub RetrievalMethods'
     FROM (
         SELECT DISTINCT
-             fc.OutreachId
-            ,dmo.SiteCleanId
-        FROM emr fc
-        LEFT JOIN [DW_Operations].[dbo].[DIM_Master_OrgdataEnhance] dmo
-            ON fc.OutreachId = dmo.OutreachId
+             OutreachId
+            ,rm.RetrievalMethodDescription
+        FROM emr                                                fc
+        LEFT JOIN [DW_Operations].[dbo].[DimRetrievalMethod]    rm
+            ON fc.RetrievalMethodId = rm.RetrievalMethodId
         ) AS dist
     GROUP BY OutreachId
 )
@@ -46,13 +57,13 @@ WITH emr as (
 )
 ,final AS (
     SELECT DISTINCT
-        fc.OutreachId
-        -- ,adt.AuditTypeDescription  AS [Audit_Type]
-        -- ,pt.ProjectTypeDescription AS [Project_Type]
+        fc.OutreachID              AS [OutreachID]
+        ,adt.AuditTypeDescription  AS [Audit_Type]
+        ,pt.ProjectTypeDescription AS [Project_Type]
         ,os.OutreachStatusDescription Outreach_Status
         ,dmo.MasterSiteID
-        -- ,dmo.Phone1 'PhonNumber'
-        ,rm.RetrievalMethodDescription
+        ,ISNULL(msi.Phone, dmo.Phone1) AS 'PhoneNumber'
+        ,rm_agg.[Sub RetrievalMethods]
         ,rm.RetrievalGroup
         ,ec.[Remote Sites Name]
         ,dmo.Address1
@@ -60,41 +71,44 @@ WITH emr as (
         ,dmo.City
         ,dmo.State
         ,dmo.ZIP
-        ,csi.SiteCleanId
         ,cc.TotalCharts
         ,cc.ToGoCharts
         ,cc.[QA+Charts]
-        ,ISNULL(dmo.CallCount, 0) AS 'CallCount'
-        ,dmo.ScheduledRetrievalDate AS 'ScheduleDate'
-        ,ISNULL(CONVERT(VARCHAR(10), o.LastCallDateId, 1), '') AS 'Last Call'
-        ,ISNULL(CONVERT(VARCHAR(10), o.InsertDate, 1), '')  AS 'InserDate'
-        ,CONVERT(VARCHAR(10), DATEADD(WEEKDAY, 9, CONVERT(VARCHAR(10), GETDATE(), 1)),1 ) AS 'Recommended Schedule Date'
---         ,CAST(p.Duedate AS DATE) AS 'DueDate'
+        ,ISNULL(dmo.CallCount, 0)       AS 'CallCount'
+        ,dmo.ScheduledRetrievalDate     AS 'ScheduleDate'
+        ,ISNULL(o.LastCallDateId, '')   AS 'Last Call'
+        ,ISNULL(o.InsertDate, '')       AS 'InsertDate'
+        ,CONVERT(DATE, DATEADD(WEEKDAY, 9, CONVERT(VARCHAR(10), GETDATE(), 23))) AS 'Recommended Schedule Date'
+        -- ,CAST(dp.Duedate AS DATE)        AS 'DueDate'
 
     FROM [emr]                          					fc
     LEFT JOIN [DW_Operations].[dbo].[DimRetrievalMethod]    rm
         ON fc.RetrievalMethodId = rm.RetrievalMethodId
     LEFT JOIN [DW_Operations].[dbo].[DimOutreachStatus]     os
-        ON fc.ChartStatusId = os.OutreachStatusId
-    LEFT JOIN [DW_Operations].[dbo].[DIM_Master_OrgdataEnhance] dmo ----- site clean ID
+        ON fc.OutreachStatusId = os.OutreachStatusId
+    LEFT JOIN [DW_Operations].[dbo].[DIM_Master_OrgdataEnhance] dmo
         ON fc.OutreachId = dmo.OutreachId
-    -- LEFT JOIN [DW_Operations].[dbo].[DimRegion]             dr
-    --     ON fc.Zip = dr.Zip
-    --     AND fc.City = fc.City
     LEFT JOIN [DW_Operations].[dbo].[DimOutreach]           o
         ON fc.OutreachID = o.OutreachId
+
+    LEFT JOIN [DW_Operations].[dbo].[DimProject]            dp
+        ON fc.ProjectId = dp.ProjectId
+    LEFT JOIN [DW_Operations].[dbo].[DimProjectType]        pt
+        ON dp.ProjectTypeId = pt.ProjectTypeId
+    LEFT JOIN [DW_Operations].[dbo].[DimAuditType]          adt
+        ON dp.AuditTypeId = adt.AuditTypeId
+
     LEFT JOIN [DWWorking].[Prod].[EMR_Credentials]          ec
                 ON fc.OutreachId = ec.[Outreach ID]
+
     LEFT JOIN chart_counts                                  cc
         ON fc.OutreachId = cc.OutreachId
-    LEFT JOIN CleanSiteId                                   csi
-        ON fc.OutreachId = csi.OutreachId
-        
-    WHERE   os.OutreachStatusId IN (4, 5, 6, 7, 8, 9, 11, 12, 14, 15, 16, 17, 18)
+    LEFT JOIN RetrievalMethod                                   rm_agg
+        ON fc.OutreachId = rm_agg.OutreachId
+    LEFT JOIN msi
+        ON dmo.MasterSiteID = msi.MasterSiteId
+    WHERE   os.OutreachStatusDescription IN ('Unscheduled', 'PNP Released','Escalated','Acct Mgmt Research ')
 )
-
-SELECT 
-*
-FROM final
+SELECT * FROM final
                         ''')
         return sql
