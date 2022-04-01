@@ -38,10 +38,10 @@ def stack_inventory(df, grouping):
     df['parent'] = np.where(f1, 1, 0)
 
     # re-rank parent orgs
-    df = rank(df,'Score' , ['Skill','parent'], rank_cols)
-    df.OutreachID = df.OutreachID.astype(str)
-    df['Matchees'] = df.groupby([grouping])['OutreachID'].transform(lambda x : '|'.join(x)).apply(lambda x: x[:3000])
-    return df
+    ranked = rank(df,'Score' , ['Skill','parent'], rank_cols)
+    ranked.OutreachID = ranked.OutreachID.astype(str)
+    ranked['Matchees'] = ranked.groupby([grouping])['OutreachID'].transform(lambda x : '|'.join(x)).apply(lambda x: x[:3000])
+    return ranked
 
 # def pt_score(df):
 #       df['Today\'s Targeted charts'] =df['Today\'s Targeted charts'].replace(0,1)
