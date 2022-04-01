@@ -1,8 +1,13 @@
 from datetime import date, timedelta, datetime
 from pathlib import Path
 import pandas as pd
-import holidays
 import time
+from datetime import date, timedelta, datetime
+from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, nearest_workday, \
+    USMartinLutherKingJr, USPresidentsDay, USMemorialDay, USLaborDay, USThanksgivingDay
+from dataclasses import dataclass
+import time
+startTime_1 = time.time()
 
 ### Input/output static tables ###
 def table_drops(push_pull,dir,table,name):
@@ -27,24 +32,34 @@ def daily_piv(df):
     return u
 
 ### CIOX Business Calender
-today = date.today()
-HOLIDAYS_US = holidays.US(years= today.year)
-HOLIDAYS_CIOX = dict(zip(HOLIDAYS_US.values(), HOLIDAYS_US.keys()))
-del_list = ("Washington\'s Birthday", 'Juneteenth National Independence Day','Columbus Day','Veterans Day')
-for i in del_list:
-    HOLIDAYS_CIOX.pop(i)
 
+class CioxHoliday(AbstractHolidayCalendar):
+    rules = [
+        Holiday('NewYearsDay', month=1, day=1, observance=nearest_workday),
+        USMartinLutherKingJr,
+        USPresidentsDay,
+        USMemorialDay,
+        Holiday('USIndependenceDay', month=7, day=4, observance=nearest_workday),
+        USLaborDay,
+        USThanksgivingDay,
+        Holiday('Christmas', month=12, day=25, observance=nearest_workday)
+    ]
+
+ciox_holidays = CioxHoliday()
+today = date.today()
 ONE_DAY = timedelta(days=1)
 
 def next_business_day(start):
     next_day = start + ONE_DAY
-    while next_day.weekday() in holidays.WEEKEND or next_day in HOLIDAYS_CIOX.values():
+    holidays = ciox_holidays.holidays(today, today + timedelta(days=1 * 365)).values
+    while next_day.weekday() >= 5 or next_day in holidays:
         next_day += ONE_DAY
     return next_day
 
 def last_business_day(start):
     next_day = start - ONE_DAY
-    while next_day.weekday() in holidays.WEEKEND or next_day in HOLIDAYS_CIOX.values():
+    holidays = ciox_holidays.holidays(today, today + timedelta(days=1 * 365)).values
+    while next_day.weekday() >= 5 or next_day in holidays:
         next_day -= ONE_DAY
     return next_day
 
@@ -70,9 +85,21 @@ def Next_N_BD(start, N):
         def test(day):
             d = start + timedelta(days=day)
             return next_business_day(d)
-        item = test(i).strftime("%m/%d/%Y")
+        item = test(i).strftime("%Y-%m-%d")
         if item not in seen:
             seen.add(item)
             B10.append(item)
         i += 1
     return B10
+
+@dataclass
+class Business_Days:
+    date_format     : str       = '%Y-%m-%d'
+    yesterday       : datetime  = x_Bus_Day_ago(1)
+    yesterday_str   : str       = x_Bus_Day_ago(1).strftime(date_format)
+    today           : datetime  = date.today()
+    today_str       : str       = date.today().strftime(date_format)
+    now             : datetime  = time.time()
+    tomorrow        : datetime  = next_business_day(today)
+    tomorrow_str    : str       = next_business_day(today).strftime(date_format)
+
