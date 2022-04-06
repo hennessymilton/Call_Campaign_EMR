@@ -10,7 +10,6 @@ WITH emr as (
         ON fc.ProjectStatusId = ps.ProjectStatusId
     WHERE   rm.RetrievalGroup = 'EMR Remote'
     AND     ps.ProjectStatusId IN (1, 3)
-    AND     fc.OutreachId <> -1
 )
 , msi AS (
     SELECT 
@@ -103,12 +102,16 @@ WITH emr as (
 
     LEFT JOIN chart_counts                                  cc
         ON fc.OutreachId = cc.OutreachId
-    LEFT JOIN RetrievalMethod                                   rm_agg
+    LEFT JOIN RetrievalMethod                               rm_agg
         ON fc.OutreachId = rm_agg.OutreachId
     LEFT JOIN msi
         ON dmo.MasterSiteID = msi.MasterSiteId
     WHERE   os.OutreachStatusDescription IN ('Unscheduled', 'PNP Released','Escalated','Acct Mgmt Research ')
+    AND     cc.ToGoCharts > 0
 )
-SELECT * FROM final
+SELECT 
+* 
+FROM final
+
                         ''')
         return sql
