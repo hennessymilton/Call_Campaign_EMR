@@ -8,11 +8,11 @@ import pipeline.score
 from pipeline.etc import next_business_day, time_check, table_drops, daily_piv
 from pipeline.outreach_status import outreach_status
 
-import server.call_campaign
-import server.call_campaignV2
+import server.active_chartfinder
+import server.call_campaignV3
+import server.connections
 import server.project_tracking
-import server.secret
-import server.query
+
 # from server.query import query
 
 today = date.today()
@@ -20,14 +20,23 @@ tomorrow = next_business_day(today).strftime("%Y-%m-%d")
 startTime_1 = time.time()
 file = f'{today.strftime("%Y-%m-%d")}.csv'
 
-servername  = server.secret.servername
-database    = server.secret.database
+server_name = 'EUS1PCFSNAPDB01'
+database    = 'DWWorking'
+table       = 'Call_Campaign'
+dwworking   = server.connections.MSSQL(server_name, database)
+dw_engine   = dwworking.create_engine()
 
 def main(force='n'):
     def update_table():
         # Save Table
-        cc_query = server.call_campaignV2.emrr()
-        cc = server.query.query(servername, database, cc_query, 'Base Table')
+        # pull dw_ops table
+        cc_query = server.call_campaignV3.emrr()
+        v3 = pd.read_sql(cc_query, dw_engine)
+        # validate active inventory in cf
+        check = server.active_chartfinder.sql()
+        check_df = pd.read_sql(check, dw_engine)
+        # keep active orgs
+        cc = v3.merge(check_df, on='OutreachID', how='inner')
         time_check(startTime_1, 'EMR_output')
         table_drops("push",'extract', cc, file)
         return cc
@@ -42,7 +51,9 @@ def main(force='n'):
 
     cc.columns = cc.columns.str.replace('/ ','')
     cc = cc.rename(columns=lambda x: x.replace(' ', "_"))
-    cc.drop(columns='top_org', inplace=True)
+    # cc.drop(columns='top_org', inplace=True)
+    cc['InsertDate'] = pd.to_datetime(cc['InsertDate'], format='%Y%m%d', errors='coerce')
+    cc['Last_Call'] = pd.to_datetime(cc['Last_Call'], format='%Y%m%d', errors='coerce')
     cc['OutreachID'] = cc['OutreachID'].astype(str)
     status_log_raw = pd.read_csv(f'data/table_drop/status_log.csv')
     cc_status = outreach_status(cc, status_log_raw)
