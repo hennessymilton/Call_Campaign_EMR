@@ -1,154 +1,37 @@
 import pandas as pd
-import numpy as np
-from datetime import datetime, date
-import time
 
-import pipeline.agent_assignment
-import pipeline.score
-from pipeline.etc import next_business_day, time_check, table_drops, daily_piv
+from pipeline.clean import clean
+from pipeline.etc import time_check, table_drops, daily_piv, Business_Days
+from pipeline.extract import update_table
 from pipeline.outreach_status import outreach_status
+from pipeline.score import stack_inventory
+from pipeline.skills import skills
 
-import server.active_chartfinder
-import server.call_campaignV3
-import server.connections
-import server.project_tracking
-
-# from server.query import query
-
-today = date.today()
-tomorrow = next_business_day(today).strftime("%Y-%m-%d")
-startTime_1 = time.time()
-file = f'{today.strftime("%Y-%m-%d")}.csv'
-
-server_name = 'EUS1PCFSNAPDB01'
-database    = 'DWWorking'
-table       = 'Call_Campaign'
-dwworking   = server.connections.MSSQL(server_name, database)
-dw_engine   = dwworking.create_engine()
+busday = Business_Days
 
 def main(force='n'):
-    def update_table():
-        # Save Table
-        # pull dw_ops table
-        cc_query = server.call_campaignV3.emrr()
-        v3 = pd.read_sql(cc_query, dw_engine)
-        # validate active inventory in cf
-        check = server.active_chartfinder.sql()
-        check_df = pd.read_sql(check, dw_engine)
-        # keep active orgs
-        cc = v3.merge(check_df, on='OutreachID', how='inner')
-        time_check(startTime_1, 'EMR_output')
-        table_drops("push",'extract', cc, file)
-        return cc
-    if force == 'y':
-        update_table()
-
     ### Get tables ###
     try:
-        cc = pd.read_csv(f'data/extract/{file}')
+        if force == 'y': update_table()
+        table = pd.read_csv(f'data/extract/{busday.today_str}.csv')
     except:
-        cc = update_table()
+        table = update_table()
 
-    cc.columns = cc.columns.str.replace('/ ','')
-    cc = cc.rename(columns=lambda x: x.replace(' ', "_"))
-    # cc.drop(columns='top_org', inplace=True)
-    cc['InsertDate'] = pd.to_datetime(cc['InsertDate'], format='%Y%m%d', errors='coerce')
-    cc['Last_Call'] = pd.to_datetime(cc['Last_Call'], format='%Y%m%d', errors='coerce')
-    cc['OutreachID'] = cc['OutreachID'].astype(str)
+    time_check(busday.now, 'EMR_output')
+    # save table
+    table_drops("push",'extract', table, busday.today_str)
+    # get updated status_log from jira
     status_log_raw = pd.read_csv(f'data/table_drop/status_log.csv')
-    cc_status = outreach_status(cc, status_log_raw)
-    # Project Tracking Report
-    # pt_query = server.project_tracking.ptr()
-    # pt = server.query.query(servername, database, pt_query, 'Project Tracking')
-    # pt_scored = pipeline.score.pt_score(pt)
+    # run full pipeline
+    scored = ( table.pipe(outreach_status, status_log_raw)
+                    .pipe(clean, busday.today)
+                    .pipe(skills)
+                    .pipe(stack_inventory, 'PhoneNumber')
+    )
 
-    # Add score to campaign
-    # df0 = pd.merge(cc, pt_scored, on=['Project Type'], how='left')
-    # time_check(startTime_1, 'Finished Query')
-
-    ### Transform ###
-    # Remove special status
-    status = ['PNP','ReSchedule','Scheduled', 'Research', 'Past Due', 'ROI Research'] # 'ROI Research'???
-    rm_status = cc_status[~cc_status['Outreach_Status'].isin(status)].copy()
-    
-    def Last_Call(df, today):
-        # create table of unique dates
-        lc_df = df[df.Last_Call.notna()].Last_Call.unique().tolist()
-        business_dates = pd.DataFrame(lc_df, columns=['Last_Call'])
-        # calculate true business days from tomorow 
-        business_dates['age'] = business_dates.Last_Call.apply(lambda x: len(pd.bdate_range(x, today)))
-        business_dates['age'] -= 1
-        lc = df.merge(business_dates, on='Last_Call', how='left')
-
-        f1 = lc.Last_Call.isna()
-        lc.age = np.where(f1, lc.DaysSinceCreation, lc.age)
-        return lc
-
-    def add_col(df, today):
-        ### Calculate age from DaysSinceCreation & DaysSinceLC
-        cols = ['InsertDate', 'Last_Call']
-        for c in cols:
-            df[c] = pd.to_datetime(df[c]).dt.date
-
-        df['DaysSinceCreation'] = (today - df['InsertDate']).dt.days
-
-        df = Last_Call(df, today)
-
-        f1 = df['Last_Call'].isna()
-        df.age = np.where(f1, df.DaysSinceCreation, df.age)
-
-        audit_sort  = {'RADV':1, 'HEDIS':2, 'Medicaid Risk':3, 'Specialty':4,  'ACA':5, 'Medicare Risk':6}
-        df['audit_sort'] = df['Audit_Type'].map(audit_sort)
-        # use map 
-        f1 = df.audit_sort <=2
-        df['sla'] = np.where(f1, 3, 4)
-        f1 = df.audit_sort > 3
-        df['sla'] = np.where(f1, 8, df.sla)
-        f1 = df.sla >= df.age
-        df['meet_sla'] = np.where(f1, 1,0)
-        # togo charts
-        bucket_amount = 10
-        labels = list(([x for x in range(bucket_amount)]))
-        df['age_bin'] = pd.cut(df.age, bins=bucket_amount, labels=labels)
-        df.age_bin = df.age_bin.astype(int)
-        # no call flag
-        f1 = df.Last_Call.isna()
-        df['no_call'] = np.where(f1, 1,0)
-
-        f1 = df['Outreach_Status'] == 'PNP Released'
-        df['pend'] = np.where(f1, 1, 0)
-        # temp projects
-        f1 = df['Project_Type'].isin(['Advantasure'])
-        df['temp_project'] = np.where(f1, 1, 0)
-        return df
-
-    add_sla = add_col(rm_status, today)
-
-    def Skills(df):
-        df['Skill'] = 'none'
-        df['Outreach_Status'] = df['Outreach_Status'].str.strip()
-
-        def general(df):
-            f1 = df['Outreach_Status'] == 'Unscheduled'
-            df.Skill = np.where(f1, 'Unscheduled', df.Skill)
-            return df
-        
-        def escalated(df):
-            ls = ['Acct Mgmt Research', 'Escalated', 'PNP Released']
-            f1 = df['Outreach_Status'].isin(ls)
-            df.Skill = np.where(f1, 'Escalated', df.Skill)
-            return df
-        f = general(df)
-        return escalated(f)
-
-    Skilled = Skills(add_sla)
-
-    scored = pipeline.score.stack_inventory(Skilled, 'PhoneNumber')
-
-    piv = daily_piv(scored).reset_index()
     # Save final product
-    table_drops('push','load',scored,file)
-    table_drops('push','load', piv,'Coordinator_Pivot.csv')
+    table_drops('push','load',scored, f"{busday.tomorrow_str}.csv")
+    table_drops('push','load', daily_piv(scored),'Coordinator_Pivot.csv')
     print(daily_piv(scored))
 
 ### Upload files
