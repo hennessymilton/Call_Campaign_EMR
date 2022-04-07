@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 def outreach_status(df, status):
     s = status[['Status','Group ID or Org #']].copy()
@@ -12,6 +13,6 @@ def outreach_status(df, status):
     melt = clean.melt(id_vars='status')[['status','value']]
     
     melt.columns = ['status','OutreachID']
-    ls = melt.dropna(subset=['OutreachID'])
-
-    return df.merge(ls, on=['OutreachID'], how='left')
+    ls = melt.replace('', np.nan).dropna(subset=['OutreachID'])
+    ls.OutreachID = ls.OutreachID.astype(int)
+    return pd.merge(df, ls, on=['OutreachID'], how='left')
