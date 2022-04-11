@@ -78,7 +78,7 @@ WITH emr as (
         ,ISNULL(o.LastCallDateId, '')   AS 'Last Call'
         ,ISNULL(o.InsertDate, '')       AS 'InsertDate'
         ,CONVERT(DATE, DATEADD(WEEKDAY, 9, CONVERT(VARCHAR(10), GETDATE(), 23))) AS 'Recommended Schedule Date'
-        -- ,CAST(dp.Duedate AS DATE)        AS 'DueDate'
+        ,ISNULL(dp.ProjectDueOnDateId,'')      AS 'DueDate'
 
     FROM [emr]                          					fc
     LEFT JOIN [DW_Operations].[dbo].[DimRetrievalMethod]    rm

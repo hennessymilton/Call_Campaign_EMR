@@ -5,6 +5,7 @@ def clean(cc, today):
     cc.columns = cc.columns.str.replace('/ ','')
     cc = cc.rename(columns=lambda x: x.replace(' ', "_"))
     # cc.drop(columns='top_org', inplace=True)
+    cc['DueDate'] = pd.to_datetime(cc['DueDate'], format='%Y%m%d', errors='coerce')
     cc['InsertDate'] = pd.to_datetime(cc['InsertDate'], format='%Y%m%d', errors='coerce')
     cc['Last_Call'] = pd.to_datetime(cc['Last_Call'], format='%Y%m%d', errors='coerce')
     cc['OutreachID'] = cc['OutreachID'].astype(str)
