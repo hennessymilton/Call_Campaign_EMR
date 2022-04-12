@@ -78,7 +78,9 @@ WITH emr as (
         ,ISNULL(o.LastCallDateId, '')   AS 'Last Call'
         ,ISNULL(o.InsertDate, '')       AS 'InsertDate'
         ,CONVERT(DATE, DATEADD(WEEKDAY, 9, CONVERT(VARCHAR(10), GETDATE(), 23))) AS 'Recommended Schedule Date'
-        ,ISNULL(dp.ProjectDueOnDateId,'')      AS 'DueDate'
+        ,ISNULL(
+            MAX(dp.ProjectDueOnDateId) OVER (PARTITION BY fc.OutreachID),
+            '')      AS 'DueDate'
 
     FROM [emr]                          					fc
     LEFT JOIN [DW_Operations].[dbo].[DimRetrievalMethod]    rm
@@ -98,7 +100,7 @@ WITH emr as (
         ON dp.AuditTypeId = adt.AuditTypeId
 
     LEFT JOIN [DWWorking].[Prod].[EMR_Credentials]          ec
-                ON fc.OutreachId = ec.[Outreach ID]
+        ON fc.OutreachId = ec.[Outreach ID]
 
     LEFT JOIN chart_counts                                  cc
         ON fc.OutreachId = cc.OutreachId
@@ -112,6 +114,5 @@ WITH emr as (
 SELECT 
 * 
 FROM final
-
                         ''')
         return sql
