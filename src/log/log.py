@@ -8,6 +8,7 @@ logging.basicConfig(filename='app.log',
 
 def df_len(df):
     logging.info(f'len: {len(df)}')
+    return df
     # logging.info(df.dtypes)
 
 if __file__ == '__main__':

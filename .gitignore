@@ -3,3 +3,4 @@ test.ipynb
 test.py
 query_*
 secret.py
+*.log
