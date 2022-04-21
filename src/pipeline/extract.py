@@ -1,7 +1,7 @@
 import pandas as pd
 
 import server.active_chartfinder
-import server.call_campaignV3
+import server.call_campaignV4
 import server.connections
 
 server_name = 'EUS1PCFSNAPDB01'
@@ -13,7 +13,7 @@ dw_engine   = dwworking.create_engine()
 def update_table():
     # Save Table
     # pull dw_ops table
-    cc_query = server.call_campaignV3.emrr()
+    cc_query = server.call_campaignV4.emrr()
     v3 = pd.read_sql(cc_query, dw_engine)
     # validate active inventory in cf
     check = server.active_chartfinder.sql()
