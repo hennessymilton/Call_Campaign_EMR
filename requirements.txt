@@ -1,0 +1,5 @@
+sqlalchemy
+pandas
+pyodbc
+pyarrow
+ipykernel #python -m ipykernel install --user --name emr --display-name emr
