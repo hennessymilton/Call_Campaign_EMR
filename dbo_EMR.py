@@ -107,7 +107,7 @@ def EMR_output():
                   AND Prjdue.[Project Due Date] >= CAST(GETDATE() AS Date)
                   AND rm.RetrievalGroup = 'EMR Remote'
                   --------------------------------------------------Alter Call Queue
-                  AND om.OutreachTeam in ('Sub 15','60 to 299','15 to 59')
+                  AND om.OutreachTeam in ('Sub 15','60 to 299','15 to 59','300+')
                   --and togo.ToGoCharts > 0
                   -- ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- --  
                   --## Removing Self Retrievals and Attestations ##--					
